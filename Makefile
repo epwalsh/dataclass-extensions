@@ -1,7 +1,13 @@
 .PHONY : check
-check :
+check : style lint test
+
+.PHONY : style
+style :
 	black --check .
 	isort --check .
+
+.PHONY : lint
+lint :
 	ruff check .
 	mypy .
 

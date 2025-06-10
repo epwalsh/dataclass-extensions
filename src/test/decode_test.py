@@ -26,7 +26,7 @@ class Point2D(typing.TypedDict):
 
 
 if sys.version_info >= (3, 12):
-    type Alias = int  # type: ignore
+    from ._type_alias import Alias  # type: ignore
 else:
     Alias = int  # type: ignore
 
