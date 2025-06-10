@@ -22,23 +22,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.10', '3.12']
+        python: ['3.12']
         task:
           - name: Tests
             run: |
               make test
+
+          - name: Checks
+            run: |
+              make check
 
         include:
           - python: '3.10'
             task:
               name: Build
               run: make build
-
-          - python: '3.12'
-            task:
-              name: Checks
-              run: |
-                make check
 
     steps:
       - uses: actions/checkout@v4
