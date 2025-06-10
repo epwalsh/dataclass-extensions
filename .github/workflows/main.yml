@@ -22,17 +22,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.11']
+        python: ['3.10', '3.12']
         task:
           - name: Checks
             run: |
-              make
+              make check
 
         include:
-          - python: '3.11'
+          - python: '3.10'
             task:
               name: Build
               run: make build
+
+          - python: '3.12'
+            task:
+              name: Test
+              run: make test
 
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +75,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
+          python-version: '3.10'
 
       - name: Dev install
         run: |

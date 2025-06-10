@@ -10,7 +10,7 @@ description = "Additional functionality for Python dataclasses"
 authors = [
     { name = "Pete Walsh", email = "epwalsh10@gmail.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = []
 
