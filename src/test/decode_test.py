@@ -25,7 +25,7 @@ class Point2D(typing.TypedDict):
     label: str
 
 
-if (sys.version_info.major, sys.version_info.minor) >= (3, 12):
+if sys.version_info >= (3, 12):
     type Alias = int  # type: ignore
 else:
     Alias = int  # type: ignore
