@@ -8,6 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, ClassVar, Type, TypeVar
 
+from .registrable import Registrable
 from .types import *
 
 C = TypeVar("C", bound=Dataclass)
@@ -163,6 +164,10 @@ def _coerce(
             # e.g. TypedDict
             or _safe_issubclass(allowed_type, dict)
         ) and _safe_isinstance(value, dict):
+            if _safe_issubclass(allowed_type, Registrable):
+                type_name = value.get("type", allowed_type._default_type)
+                if type_name is not None:
+                    allowed_type = allowed_type.get_registered_class(type_name)
             type_hints = typing.get_type_hints(allowed_type)
             kwargs = {}
             for k, v in value.items():

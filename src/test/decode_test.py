@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from dataclass_extensions.decode import _coerce, decode
+from dataclass_extensions.registrable import Registrable
 from dataclass_extensions.types import *
 
 
@@ -203,3 +204,22 @@ def test_decode_with_a_variety_of_optional_complex_types():
     assert config.path is None
     assert all(isinstance(v, Foo) for v in config.list_data)
     assert all(isinstance(v, Foo) for v in config.indefinite_tuple)
+
+
+@dataclass
+class BaseType(Registrable):
+    pass
+
+
+@BaseType.register("type1")
+@dataclass
+class SubType(BaseType):
+    x: int
+
+
+def test_decode_with_registrable_subclasses():
+    @dataclass
+    class Config:
+        foo: BaseType | None = None
+
+    decode(Config, {"foo": {"type": "type1", "x": 0}})
