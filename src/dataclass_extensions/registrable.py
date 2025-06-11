@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import dataclasses
+import sys
 import typing
 from dataclasses import dataclass
 from typing import Callable, ClassVar, Type, TypeVar
 
 R = TypeVar("R", bound="Registrable")
+
+if sys.version_info < (3, 11):
+    # HACK: work-around for https://stackoverflow.com/q/70400639/4151392
+    dataclasses.InitVar.__call__ = lambda *_: None  # type: ignore
 
 
 @dataclass
