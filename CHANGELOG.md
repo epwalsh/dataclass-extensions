@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.0](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.0) - 2025-06-11
+
 ### Added
 
 - Added `default: bool` option to `Registrable.register()` for defining a default implementation.
