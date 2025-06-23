@@ -96,6 +96,9 @@ def _coerce(
             except TypeError:
                 pass
 
+        if allowed_type is float and _safe_isinstance(value, (float, int)):
+            return float(value)
+
         origin = getattr(allowed_type, "__origin__", None)
         args = getattr(allowed_type, "__args__", None)
         if (origin is list or origin is collections.abc.MutableSequence) and _safe_isinstance(
@@ -168,7 +171,14 @@ def _coerce(
                 type_name = value.get("type", allowed_type._default_type)
                 if type_name is not None:
                     allowed_type = allowed_type.get_registered_class(type_name)
-            type_hints = typing.get_type_hints(allowed_type)
+
+            try:
+                type_hints = typing.get_type_hints(allowed_type)
+            except NameError as e:
+                raise NameError(
+                    f"{str(e)}. If you're using 'from __future__ import annotations' you may need to import this type."
+                ) from e
+
             kwargs = {}
             for k, v in value.items():
                 try:

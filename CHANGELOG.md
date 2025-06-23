@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Provide a better error message when types can't be resolved due to `from __future__ import annotations`.
+- Allow decoding integers as floats.
+
 ## [v0.2.1](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.1) - 2025-06-11
 
 ### Fixed
