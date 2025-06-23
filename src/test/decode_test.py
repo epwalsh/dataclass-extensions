@@ -145,6 +145,11 @@ class Foo:
     x: int
 
 
+def test_decode_attribute_error():
+    with pytest.raises(AttributeError):
+        decode(Foo, {"x": 1, "y": 2})
+
+
 def test_decode_with_a_variety_of_required_complex_types():
     @dataclass
     class Config:

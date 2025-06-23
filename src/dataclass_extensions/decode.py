@@ -26,7 +26,11 @@ class Decoder:
         Decode a dataset from a JSON-safe dictionary. The inverse of :func:`encode()`.
         """
         type_hints = typing.get_type_hints(config_class)
-        kwargs = {k: _coerce(v, type_hints[k], self.custom_handlers, k) for k, v in data.items()}
+        kwargs: dict[str, Any] = {}
+        for k, v in data.items():
+            if k not in type_hints:
+                raise AttributeError(f"class '{config_class.__qualname__}' has no attribute '{k}'")
+            kwargs[k] = _coerce(v, type_hints[k], self.custom_handlers, k)
         return config_class(**kwargs)
 
 
