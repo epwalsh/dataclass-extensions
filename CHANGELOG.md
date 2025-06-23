@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.2](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.2) - 2025-06-23
+
 ### Fixed
 
 - Provide a better error message when types can't be resolved due to `from __future__ import annotations`.
