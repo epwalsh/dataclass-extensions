@@ -191,6 +191,7 @@ def test_decode_with_a_variety_of_optional_complex_types():
         list_data: typing.List[Foo] = dataclasses.field(default_factory=list)
         fixed_tuple: tuple[int, int] = dataclasses.field(default_factory=lambda: (0, 0))
         indefinite_tuple: tuple[Foo, ...] = dataclasses.field(default_factory=tuple)
+        str_data: str | None = None
 
     config = decode(
         Config,
@@ -202,6 +203,7 @@ def test_decode_with_a_variety_of_optional_complex_types():
             "list_data": [{"x": 0}],
             "fixed_tuple": [0, 1],
             "indefinite_tuple": [{"x": -1}],
+            "str_data": "",
         },
     )
     assert isinstance(config, Config)
@@ -209,6 +211,7 @@ def test_decode_with_a_variety_of_optional_complex_types():
     assert config.path is None
     assert all(isinstance(v, Foo) for v in config.list_data)
     assert all(isinstance(v, Foo) for v in config.indefinite_tuple)
+    assert config.str_data == ""
 
 
 @dataclass
