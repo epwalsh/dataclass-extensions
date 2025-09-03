@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `decode()` will raise an `AttributeError` instead of a `KeyError` when the data contains a field not defined by the class.
 
+### Fixed
+
+- Handle enum types in `encode()`.
+
 ## [v0.2.2](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.2) - 2025-06-23
 
 ### Fixed

@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 from datetime import datetime
+from enum import Enum
 from typing import Any, Callable, ClassVar, Generator, Type, TypeVar
 
 from .registrable import Registrable
@@ -70,6 +71,8 @@ class Encoder:
                 return d.timestamp()
             elif isinstance(d, pathlib.Path):
                 return str(d)
+            elif isinstance(d, Enum):
+                return d.value
             elif d is None or isinstance(d, (float, int, bool, str)):
                 return d
 
