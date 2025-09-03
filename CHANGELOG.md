@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.3](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.3) - 2025-09-03
+
 ### Changed
 
 - `decode()` will raise an `AttributeError` instead of a `KeyError` when the data contains a field not defined by the class.
