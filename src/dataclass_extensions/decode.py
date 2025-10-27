@@ -25,12 +25,18 @@ class Decoder:
         """
         Decode a dataset from a JSON-safe dictionary. The inverse of :func:`encode()`.
         """
+        if _safe_issubclass(config_class, Registrable):
+            type_name = data.pop("type", config_class._default_type)  # type: ignore[attr-defined]
+            if type_name is not None:
+                config_class = config_class.get_registered_class(type_name)  # type: ignore[attr-defined]
+
         type_hints = typing.get_type_hints(config_class)
         kwargs: dict[str, Any] = {}
         for k, v in data.items():
             if k not in type_hints:
                 raise AttributeError(f"class '{config_class.__qualname__}' has no attribute '{k}'")
             kwargs[k] = _coerce(v, type_hints[k], self.custom_handlers, k)
+
         return config_class(**kwargs)
 
 

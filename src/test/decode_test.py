@@ -226,6 +226,8 @@ class SubType(BaseType):
 
 
 def test_decode_with_registrable_subclasses():
+    decode(BaseType, {"type": "type1", "x": 0})
+
     @dataclass
     class Config:
         foo: BaseType | None = None

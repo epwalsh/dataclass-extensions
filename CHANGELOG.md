@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed decoding directly from a registered subclass with different fields.
+
 ## [v0.2.3](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.3) - 2025-09-03
 
 ### Changed
