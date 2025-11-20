@@ -46,14 +46,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Dev install
+      - name: Setup env
         run: |
-          make dev-install
+          uv pip install --system --break-system-packages -e .[dev]
+
+      - name: Show environment info
+        shell: bash
+        run: |
+          # Show environment info.
+          echo "✓ Using $(python --version) @ $(which python)"
+          pip freeze
 
       - name: ${{ matrix.task.name }}
         run: |

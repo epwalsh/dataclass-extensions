@@ -13,7 +13,7 @@ lint :
 
 .PHONY : test
 test :
-	pytest -v src/test/
+	pytest -v --color=yes src/test/
 
 .PHONY : dev-install
 dev-install :
