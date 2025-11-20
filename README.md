@@ -5,6 +5,8 @@ Additional functionality for Python dataclasses
 
 ## Installation
 
+Python 3.10 or newer is required. You can install from the package from PyPI:
+
 ```fish
 pip install dataclass-extensions
 ```
