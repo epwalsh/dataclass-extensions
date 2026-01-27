@@ -37,7 +37,6 @@ assert decode(FruitBasket, encode(basket)) == basket
 
 You can also define how to encode/decode non-dataclass types:
 
-
 ```python
 from dataclasses import dataclass
 from dataclass_extensions import decode, encode
@@ -54,11 +53,12 @@ class Bar:
 encode.register_encoder(lambda foo: {"x": foo.x}, Foo)
 decode.register_decoder(lambda d: Foo(d["x"]), Foo)
 
-encode(Bar(foo=Foo(10)))  # {'foo': {'x': 10}}
-decode(Bar, {"foo": {"x": 10}})
+bar = Bar(foo=Foo(10))
+assert encode(bar) == {"foo": {"x": 10}}
+assert decode(Bar, encode(bar)) == bar
 ```
 
-### Registrable subclasses
+### Polymorphism through registrable subclasses
 
 ```python
 from dataclasses import dataclass
@@ -81,6 +81,7 @@ class Banana(Fruit):
 class Apple(Fruit):
     calories: int = 150
     price: float = 1.50
+    variety: str = "Granny Smith"
 
 @dataclass
 class FruitBasket:
@@ -88,7 +89,14 @@ class FruitBasket:
     count: int
 
 basket = FruitBasket(fruit=Apple(), count=2)
-# note the additional "type" field, which corresponds to the registered name of the subclass
-assert encode(basket) == {"fruit": {"calories": 150, "price": 1.5, "type": "apple"}, "count": 2}
+assert encode(basket) == {
+    "fruit": {
+        "type": "apple",  # corresponds to the registered name
+        "calories": 150,
+        "price": 1.5,
+        "variety": "Granny Smith",
+    },
+    "count": 2,
+}
 assert decode(FruitBasket, encode(basket)) == basket
 ```
