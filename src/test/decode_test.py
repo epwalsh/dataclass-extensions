@@ -125,6 +125,21 @@ dt_now = datetime.now()
             float,
             1e-1,
         ),
+        pytest.param(
+            "1",
+            int,
+            1,
+        ),
+        pytest.param(
+            1.0,
+            int,
+            1,
+        ),
+        pytest.param(
+            "1e2",
+            int,
+            100,
+        ),
         # Aliases.
         pytest.param(
             0,

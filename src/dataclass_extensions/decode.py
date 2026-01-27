@@ -115,6 +115,17 @@ def _coerce(
                 except ValueError:
                     pass
 
+        if allowed_type is int:
+            if _safe_isinstance(value, (int, float)) and (value_as_int := int(value)) == value:
+                return value_as_int
+            elif _safe_isinstance(value, str):
+                try:
+                    value_as_float = float(value)
+                    if (value_as_int := int(value_as_float)) == value_as_float:
+                        return value_as_int
+                except ValueError:
+                    pass
+
         origin = getattr(allowed_type, "__origin__", None)
         args = getattr(allowed_type, "__args__", None)
         if (origin is list or origin is collections.abc.MutableSequence) and _safe_isinstance(
