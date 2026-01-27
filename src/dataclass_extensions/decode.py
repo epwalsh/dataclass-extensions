@@ -106,8 +106,14 @@ def _coerce(
             except TypeError:
                 pass
 
-        if allowed_type is float and _safe_isinstance(value, (float, int)):
-            return float(value)
+        if allowed_type is float:
+            if _safe_isinstance(value, (float, int)):
+                return float(value)
+            elif _safe_isinstance(value, str):  # need this to handle scientific notation
+                try:
+                    return float(value)
+                except ValueError:
+                    pass
 
         origin = getattr(allowed_type, "__origin__", None)
         args = getattr(allowed_type, "__args__", None)

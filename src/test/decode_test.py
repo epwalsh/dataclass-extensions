@@ -119,6 +119,12 @@ dt_now = datetime.now()
             "foo",
             id="typing.Literal[foo, bar]",
         ),
+        # Numbers.
+        pytest.param(
+            "1e-1",
+            float,
+            1e-1,
+        ),
         # Aliases.
         pytest.param(
             0,
