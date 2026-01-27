@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed a bug with decoding optional enum types.
+
 ## [v0.2.4](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.4) - 2025-10-27
 
 ### Fixed

@@ -387,7 +387,7 @@ def test_decode_invalid_tuple_length():
         pass
 
 
-def test_decode_enum_failure():
+def test_decode_enum():
     """Test decode with invalid enum value."""
 
     @dataclass
@@ -397,6 +397,28 @@ def test_decode_enum_failure():
     # Valid enum value should work
     config = decode(Config, {"color": "red"})
     assert config.color == Color.RED
+
+
+def test_decode_optional_enum():
+    """Test decode with invalid enum value."""
+
+    @dataclass
+    class Config:
+        color: Color | None
+
+    config = decode(Config, {"color": "red"})
+    assert config.color == Color.RED
+
+    config = decode(Config, {"color": None})
+    assert config.color is None
+
+
+def test_decode_enum_invalid_value_failure():
+    """Test decode with invalid enum value."""
+
+    @dataclass
+    class Config:
+        color: Color
 
     # Invalid enum value should raise ValueError (from Enum constructor) or TypeError
     # The actual error depends on how the coercion fails

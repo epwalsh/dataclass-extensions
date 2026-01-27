@@ -90,7 +90,7 @@ def _coerce(
         if _safe_issubclass(allowed_type, Enum):
             try:
                 return allowed_type(value)
-            except TypeError:
+            except (TypeError, ValueError):
                 pass
 
         # e.g. typing.NamedTuple
