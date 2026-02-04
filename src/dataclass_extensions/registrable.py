@@ -78,8 +78,8 @@ class Registrable:
     @classmethod
     def get_registered_name(cls: Type[R], subclass: Type[R] | None = None) -> str:
         if subclass is None:
-            if getattr(cls, "registered_name", None) is not None:
-                return cls.registered_name  # type: ignore
+            if cls.registered_name is not None:
+                return cls.registered_name
             else:
                 raise ValueError(
                     f"class {cls.__name__} is not a registered subclass of any base registrable class"
