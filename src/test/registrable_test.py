@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 from dataclasses import dataclass
 
 import pytest
@@ -221,3 +222,20 @@ def test_registrable_nested_registrable():
     assert container.outer.y == 20
     assert container.inner.z == 30
     assert container.inner.w == 40
+
+
+@dataclass
+class Foo(Registrable):
+    x: int
+    y: str
+
+
+@Foo.register("bar")
+@dataclass
+class Bar(Foo):
+    z: float
+
+
+def test_registrable_is_pickleable():
+    bar = pickle.loads(pickle.dumps(Bar(x=10, y="hello", z=3.14)))
+    assert isinstance(bar, Bar)

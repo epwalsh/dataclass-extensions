@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Ensure `Registrable` subclasses can be pickled.
+
 ## [v0.2.7](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.7) - 2026-01-28
 
 ### Fixed

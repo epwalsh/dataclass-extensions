@@ -17,6 +17,8 @@ if sys.version_info < (3, 11):
 class Registrable:
     _registry: ClassVar[dict[str, Type[Registrable]]]
     _default_type: ClassVar[str | None]
+    registered_name: ClassVar[str | None]
+    registered_base: ClassVar[Type[Registrable] | None]
 
     type: dataclasses.InitVar[str | None] = dataclasses.field(
         default=None, kw_only=True, repr=False
@@ -24,16 +26,14 @@ class Registrable:
 
     def __new__(cls, *args, type: str | None = None, **kwargs):
         del args, kwargs
-        if type is not None and (
-            not hasattr(cls, "registered_name") or type != cls.registered_name  # type: ignore
-        ):
+        if type is not None and type != cls.registered_name:
             if type not in cls._registry:
                 raise KeyError(
                     f"'{type}' is not registered name for {cls.__name__}. "
                     f"Available choices are: {list(cls._registry.keys())}"
                 )
             return super().__new__(cls._registry[type])
-        elif cls._default_type is not None and not hasattr(cls, "registered_name"):
+        elif cls._default_type is not None and cls.registered_name is None:
             return super().__new__(cls._registry[cls._default_type])
         else:
             return super().__new__(cls)
@@ -44,6 +44,10 @@ class Registrable:
             cls._registry = {}
         if not hasattr(cls, "_default_type"):
             cls._default_type = None
+        if not hasattr(cls, "registered_name"):
+            cls.registered_name = None
+        if not hasattr(cls, "registered_base"):
+            cls.registered_base = None
 
     @classmethod
     def register(cls, name: str, default: bool = False) -> Callable[[Type[R]], Type[R]]:
@@ -64,28 +68,18 @@ class Registrable:
                 else:
                     cls._default_type = name
 
-            fields = [
-                (f.name, f.type, f) for f in dataclasses.fields(subclass) if f.name != "type"  # type: ignore
-            ] + [
-                ("registered_name", ClassVar[str], name),  # type: ignore
-                ("registered_base", ClassVar[R], cls),  # type: ignore
-                ("type", dataclasses.InitVar[str | None], dataclasses.field(default=name, kw_only=True, repr=False)),  # type: ignore
-            ]
-            subclass = dataclasses.make_dataclass(
-                subclass.__name__,
-                fields,  # type: ignore
-                bases=(subclass,),
-            )
             cls._registry[name] = subclass
-            return subclass
+            subclass.registered_name = name
+            subclass.registered_base = cls
+            return subclass  # type: ignore
 
         return register_subclass
 
     @classmethod
     def get_registered_name(cls: Type[R], subclass: Type[R] | None = None) -> str:
         if subclass is None:
-            if hasattr(cls, "registered_name"):
-                return cls.registered_name  # type: ignore
+            if cls.registered_name is not None:
+                return cls.registered_name
             else:
                 raise ValueError(
                     f"class {cls.__name__} is not a registered subclass of any base registrable class"
