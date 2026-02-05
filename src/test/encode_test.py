@@ -275,3 +275,14 @@ def test_encode_nested_registrable():
     container = Container(item=SubType1(x=10, y=20))
     encoded = encode(container)
     assert encoded == {"item": {"x": 10, "y": 20, "type": "sub1"}}
+
+
+def test_encode_with_non_init_fields():
+    @dataclass
+    class Config:
+        x: int = 1
+        y: int = dataclasses.field(init=False, default=2)
+        z: int = dataclasses.field(init=False, default=3)
+
+    # Should exclude non-init fields y and z.
+    assert encode(Config()) == {"x": 1}

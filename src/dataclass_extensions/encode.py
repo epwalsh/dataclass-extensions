@@ -41,7 +41,9 @@ class Encoder:
         def iter_fields(d) -> Generator[tuple[str, Any], None, None]:
             for field in dataclasses.fields(d):
                 value = getattr(d, field.name)
-                if exclude_none and value is None:
+                if not field.init:
+                    continue
+                elif exclude_none and value is None:
                     continue
                 elif exclude_private_fields and field.name.startswith("_"):
                     continue
