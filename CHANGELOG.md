@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.9](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.9) - 2026-02-04
+
 ### Fixed
 
 - Exclude non-init fields from encoding.
