@@ -40,10 +40,8 @@ class Registrable:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        if not hasattr(cls, "_registry"):
-            cls._registry = {}
-        if not hasattr(cls, "_default_type"):
-            cls._default_type = None
+        cls._registry = {}
+        cls._default_type = None
         if not hasattr(cls, "registered_name"):
             cls.registered_name = None
         if not hasattr(cls, "registered_base"):
@@ -51,7 +49,12 @@ class Registrable:
 
     @classmethod
     def register(cls, name: str, default: bool = False) -> Callable[[Type[R]], Type[R]]:
+        if cls is Registrable:
+            raise TypeError("Cannot register with the base Registrable class itself")
+
         def register_subclass(subclass: Type[R]) -> Type[R]:
+            if subclass is Registrable:
+                raise TypeError("Cannot register the base Registrable class itself")
             if not issubclass(subclass, cls):
                 raise TypeError(
                     f"class {subclass.__name__} must be a subclass of {cls.__name__} in order to register it"
@@ -77,6 +80,8 @@ class Registrable:
 
     @classmethod
     def get_registered_name(cls: Type[R], subclass: Type[R] | None = None) -> str:
+        if cls is Registrable:
+            raise TypeError("Cannot register the base Registrable class itself")
         if subclass is None:
             if cls.registered_name is not None:
                 return cls.registered_name
@@ -95,6 +100,8 @@ class Registrable:
 
     @classmethod
     def get_registered_class(cls: Type[R], type: str) -> Type[R]:
+        if cls is Registrable:
+            raise TypeError("Cannot register with the base Registrable class itself")
         if type not in cls._registry:
             raise KeyError(
                 f"'{type}' is not registered name for {cls.__name__}. "
@@ -104,10 +111,14 @@ class Registrable:
 
     @classmethod
     def get_registered_names(cls) -> list[str]:
+        if cls is Registrable:
+            raise TypeError("Cannot register with the base Registrable class itself")
         return list(cls._registry.keys())
 
     @classmethod
     def get_default(cls: Type[R]) -> Type[R]:
+        if cls is Registrable:
+            raise TypeError("Cannot register with the base Registrable class itself")
         if cls._default_type is None:
             raise ValueError(f"A default implementation of {cls.__name__} has not been registered")
         return cls.get_registered_class(cls._default_type)

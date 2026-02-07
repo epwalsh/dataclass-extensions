@@ -224,6 +224,37 @@ def test_registrable_nested_registrable():
     assert container.inner.w == 40
 
 
+def test_multiple_registered_names():
+    """Test that registering multiple names for the same class raises ValueError."""
+
+    @dataclass
+    class BaseType(Registrable):
+        x: int
+
+    @BaseType.register("my_type")
+    @dataclass
+    class MyType(BaseType):
+        pass
+
+    @BaseType.register("my_type.v1")
+    @MyType.register("v1")
+    @dataclass
+    class MyTypeV1(MyType):
+        pass
+
+    assert set(BaseType._registry.keys()) == {"my_type", "my_type.v1"}
+    assert set(MyType._registry.keys()) == {"v1"}
+    assert set(MyTypeV1._registry.keys()) == set()
+
+
+def test_register_registrable_fails():
+    with pytest.raises(TypeError, match="Cannot register with the base Registrable class itself"):
+
+        @Registrable.register("foo")
+        class Foo(Registrable):
+            pass
+
+
 @dataclass
 class Foo(Registrable):
     x: int
