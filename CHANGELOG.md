@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.10](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.10) - 2026-02-07
+
 ### Fixed
 
 - Handled some edge-cases with Registrable subclasses.
