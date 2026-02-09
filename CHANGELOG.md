@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed decoding Registrable classes with a subclass its registered `type` is in the data.
+
 ## [v0.2.10](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.10) - 2026-02-07
 
 ### Fixed

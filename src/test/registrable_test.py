@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from dataclass_extensions import Registrable, encode
+from dataclass_extensions import Registrable, decode, encode
 
 
 def test_registrable_class():
@@ -29,6 +29,8 @@ def test_registrable_class():
     assert isinstance(SubType(x=0), SubType)
 
     assert encode(SubType(x=0)) == {"x": 0, "y": -1, "z": -1, "w": 2, "type": "bar"}
+    assert decode(BaseType, {"x": 0, "y": -1, "z": -1, "w": 2, "type": "bar"}) == SubType(x=0)
+    assert decode(SubType, {"x": 0, "y": -1, "z": -1, "w": 2, "type": "bar"}) == SubType(x=0)
 
 
 def test_registrable_class_with_default():

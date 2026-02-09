@@ -27,7 +27,7 @@ class Decoder:
         """
         if _safe_issubclass(config_class, Registrable):
             type_name = data.pop("type", config_class._default_type)  # type: ignore[attr-defined]
-            if type_name is not None:
+            if type_name is not None and type_name != config_class.registered_name:  # type: ignore[attr-defined]
                 config_class = config_class.get_registered_class(type_name)  # type: ignore[attr-defined]
 
         type_hints = typing.get_type_hints(config_class)
