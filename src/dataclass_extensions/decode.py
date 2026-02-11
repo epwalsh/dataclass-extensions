@@ -196,7 +196,7 @@ def _coerce(
         ) and _safe_isinstance(value, dict):
             if _safe_issubclass(allowed_type, Registrable):
                 type_name = value.get("type", allowed_type._default_type)
-                if type_name is not None:
+                if type_name is not None and type_name != allowed_type.registered_name:
                     allowed_type = allowed_type.get_registered_class(type_name)
 
             try:

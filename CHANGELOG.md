@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed another edge-case with decoding registrable classes.
+
 ## [v0.2.11](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.11) - 2026-02-09
 
 ### Fixed
