@@ -12,7 +12,9 @@ authors = [
 ]
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-dependencies = []
+dependencies = [
+    "typing_extensions",
+]
 
 [project.urls]
 Homepage = "https://github.com/epwalsh/dataclass-extensions"
