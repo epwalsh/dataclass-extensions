@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.3.0](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.3.0) - 2026-02-20
+
 ### Added
 
 - Added support for decoding recursive types, i.e. classes that take arguments which are or contain instances of the same class.
