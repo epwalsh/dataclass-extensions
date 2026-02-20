@@ -63,7 +63,9 @@ def _resolve_type_hint(type_hint: Any, owner: Any) -> Any:
         type_hint = typing_extensions.evaluate_forward_ref(  # type: ignore
             typing.ForwardRef(type_hint), owner=owner
         )
-    elif type_hint is typing_extensions.Self or hasattr(typing, "Self") and type_hint is getattr(typing, "Self"):  # type: ignore
+    # NOTE: In Python 3.11+ typing_extensions.Self should just be a re-export of typing.Self,
+    # so we're being extra defensive here.
+    elif type_hint is typing_extensions.Self or (hasattr(typing, "Self") and type_hint is getattr(typing, "Self")):  # type: ignore
         if inspect.isclass(owner):
             type_hint = owner
         else:
