@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from dataclass_extensions.decode import _coerce, decode
+from dataclass_extensions.decode import DecodeError, _coerce, decode
 from dataclass_extensions.registrable import Registrable
 from dataclass_extensions.types import *
 
@@ -172,8 +172,8 @@ class Foo:
     x: int
 
 
-def test_decode_attribute_error():
-    with pytest.raises(AttributeError):
+def test_decode_top_level_attribute_error():
+    with pytest.raises(DecodeError):
         decode(Foo, {"x": 1, "y": 2})
 
 
@@ -369,7 +369,7 @@ def test_decode_type_error():
         x: int
 
     # Should raise TypeError when value can't be coerced
-    with pytest.raises(TypeError, match="Not sure how to coerce"):
+    with pytest.raises(TypeError, match="Failed to coerce"):
         decode(Config, {"x": "not_an_int"})
 
 
@@ -661,3 +661,57 @@ def test_nested_recursive_decode_with_self_type():
     assert c.x.children[0].children is not None
     assert isinstance(c.x.children[0].children[0], RecursiveTypeWithSelf)
     assert c.x.children[0].children[0].name == "l3"
+
+
+@dataclass
+class Config1:
+    x: int
+
+
+@dataclass
+class Config2:
+    y: int
+
+
+@dataclass
+class ConfigWithUnionOfSubTypes:
+    items: list[Config1 | Config2]
+
+
+def test_decode_error_from_inner_error():
+    @dataclass
+    class Config:
+        c: ConfigWithUnionOfSubTypes
+
+    with pytest.raises(DecodeError) as exc_info:
+        decode(Config, {"c": {"items": [{"z": 2}]}})
+
+    assert str(exc_info.value) == "\n".join(
+        [
+            "Failed to coerce value {'items': [{'z': 2}]} at key 'c' to a <class 'test.decode_test.ConfigWithUnionOfSubTypes'> from type hint '<class 'test.decode_test.ConfigWithUnionOfSubTypes'>' (<class 'type'>).",
+            "→ [c.items.0] coercing to <class 'test.decode_test.Config1'> failed with AttributeError: class 'Config1' has no attribute 'z'",
+            "→ [c.items.0] coercing to <class 'test.decode_test.Config2'> failed with AttributeError: class 'Config2' has no attribute 'z'",
+        ]
+    )
+
+
+def test_decode_union_of_dataclass_types():
+    c = decode(ConfigWithUnionOfSubTypes, {"items": [{"x": 1}, {"y": 2}]})
+    assert isinstance(c, ConfigWithUnionOfSubTypes)
+    assert isinstance(c.items[0], Config1)
+    assert isinstance(c.items[1], Config2)
+
+
+@dataclass
+class ConfigWithUnionOfListTypes:
+    items: list[Config1] | list[Config2]
+
+
+def test_decode_union_of_list_types():
+    c = decode(ConfigWithUnionOfListTypes, {"items": [{"x": 1}]})
+    assert isinstance(c, ConfigWithUnionOfListTypes)
+    assert isinstance(c.items[0], Config1)
+
+    c = decode(ConfigWithUnionOfListTypes, {"items": [{"y": 2}]})
+    assert isinstance(c, ConfigWithUnionOfListTypes)
+    assert isinstance(c.items[0], Config2)

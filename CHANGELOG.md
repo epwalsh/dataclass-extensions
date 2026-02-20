@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for decoding recursive types, i.e. classes that take arguments which are or contain instances of the same class.
 
+### Changed
+
+- `decode()` failures now raise a `DecodeError`. This is a subclass of `TypeError`, which keeps things backwards compatible
+  for the most part, except when unknown top-level fields are encountered, which used to raise an `AttributeError`.
+
+### Fixed
+
+- Fixed decoding a union of different dataclass types, and unions of collections.
+- Improved decoding error messages.
+
 ## [v0.2.12](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.2.12) - 2026-02-11
 
 ### Fixed
