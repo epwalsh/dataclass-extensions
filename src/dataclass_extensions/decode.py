@@ -3,7 +3,6 @@ from __future__ import annotations
 import collections.abc
 import dataclasses
 import inspect
-import sys
 import types
 import typing
 from datetime import datetime
@@ -14,11 +13,6 @@ import typing_extensions
 
 from .registrable import Registrable
 from .types import *
-
-if sys.version_info >= (3, 11):
-    from typing import Self  # type: ignore
-else:
-    from typing_extensions import Self  # type: ignore
 
 C = TypeVar("C", bound=Dataclass)
 
@@ -61,10 +55,15 @@ def _get_type_hints(obj: Any) -> dict[str, Any]:
 
 def _resolve_type_hint(type_hint: Any, owner: Any) -> Any:
     if isinstance(type_hint, str):
+        if not hasattr(typing_extensions, "evaluate_forward_ref"):
+            raise ImportError(
+                "evaluating string type hints (like forward references) "
+                "requires a newer version of typing extensions"
+            )
         type_hint = typing_extensions.evaluate_forward_ref(  # type: ignore
             typing.ForwardRef(type_hint), owner=owner
         )
-    elif type_hint is Self:  # type: ignore
+    elif type_hint is typing_extensions.Self or hasattr(typing, "Self") and type_hint is getattr(typing, "Self"):  # type: ignore
         if inspect.isclass(owner):
             type_hint = owner
         else:
@@ -251,7 +250,7 @@ def _coerce(
                     raise KeyError(
                         f"type {allowed_type} has no field '{k}' (full key '{key}.{k}')"
                     ) from e
-                kwargs[k] = _coerce(v, type_hint, custom_handlers, f"{key}.{k}", owner)
+                kwargs[k] = _coerce(v, type_hint, custom_handlers, f"{key}.{k}", allowed_type)
             return allowed_type(**kwargs)
 
     if Any in allowed_types:
