@@ -32,6 +32,11 @@ if sys.version_info >= (3, 12):
 else:
     Alias = int  # type: ignore
 
+if sys.version_info >= (3, 11):
+    from typing import Self  # type: ignore
+else:
+    from typing_extensions import Self  # type: ignore
+
 dt_now = datetime.now()
 
 
@@ -157,7 +162,7 @@ dt_now = datetime.now()
     ],
 )
 def test_coerce_from_type_hints(value: Any, type_hint: Any, expected: Any):
-    result = _coerce(value, type_hint, {}, "0")
+    result = _coerce(value, type_hint, {}, "0", value)
     assert type(result) is type(expected)
     assert result == expected
 
@@ -515,3 +520,73 @@ def test_decode_nested_registrable():
     assert isinstance(container.item, NestedSubType1)
     assert container.item.x == 10
     assert container.item.y == 20
+
+
+@dataclass
+class RecursiveType:
+    name: str
+    children: list[RecursiveType] | None
+
+
+def test_recursive_decode():
+    x = decode(
+        RecursiveType,
+        {
+            "name": "l1",
+            "children": [{"name": "l2", "children": [{"name": "l3", "children": None}]}],
+        },
+    )
+    assert x.name == "l1"
+    assert x.children is not None
+    assert isinstance(x.children[0], RecursiveType)
+    assert x.children[0].name == "l2"
+    assert x.children[0].children is not None
+    assert isinstance(x.children[0].children[0], RecursiveType)
+    assert x.children[0].children[0].name == "l3"
+
+
+@dataclass
+class RecursiveType2:
+    name: str
+    children: list["RecursiveType2"] | None
+
+
+def test_recursive_decode_with_str_forward_reference():
+    x = decode(
+        RecursiveType2,
+        {
+            "name": "l1",
+            "children": [{"name": "l2", "children": [{"name": "l3", "children": None}]}],
+        },
+    )
+    assert x.name == "l1"
+    assert x.children is not None
+    assert isinstance(x.children[0], RecursiveType2)
+    assert x.children[0].name == "l2"
+    assert x.children[0].children is not None
+    assert isinstance(x.children[0].children[0], RecursiveType2)
+    assert x.children[0].children[0].name == "l3"
+
+
+@dataclass
+class RecursiveTypeWithSelf:
+    name: str
+    children: list[Self] | None
+
+
+#  @pytest.mark.xfail
+def test_recursive_decode_with_self_type():
+    x = decode(
+        RecursiveTypeWithSelf,
+        {
+            "name": "l1",
+            "children": [{"name": "l2", "children": [{"name": "l3", "children": None}]}],
+        },
+    )
+    assert x.name == "l1"
+    assert x.children is not None
+    assert isinstance(x.children[0], RecursiveTypeWithSelf)
+    assert x.children[0].name == "l2"
+    assert x.children[0].children is not None
+    assert isinstance(x.children[0].children[0], RecursiveTypeWithSelf)
+    assert x.children[0].children[0].name == "l3"

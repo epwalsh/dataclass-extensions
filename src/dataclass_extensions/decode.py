@@ -2,14 +2,23 @@ from __future__ import annotations
 
 import collections.abc
 import dataclasses
+import inspect
+import sys
 import types
 import typing
 from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, ClassVar, Type, TypeVar
 
+import typing_extensions
+
 from .registrable import Registrable
 from .types import *
+
+if sys.version_info >= (3, 11):
+    from typing import Self  # type: ignore
+else:
+    from typing_extensions import Self  # type: ignore
 
 C = TypeVar("C", bound=Dataclass)
 
@@ -24,18 +33,21 @@ class Decoder:
     def __call__(self, config_class: Type[C], data: dict[str, Any]) -> C:
         """
         Decode a dataset from a JSON-safe dictionary. The inverse of :func:`encode()`.
+
+        .. warning::
+            This may execute arbitrary code contained in annotations.
         """
         if _safe_issubclass(config_class, Registrable):
             type_name = data.pop("type", config_class._default_type)  # type: ignore[attr-defined]
             if type_name is not None and type_name != config_class.registered_name:  # type: ignore[attr-defined]
                 config_class = config_class.get_registered_class(type_name)  # type: ignore[attr-defined]
 
-        type_hints = typing.get_type_hints(config_class)
+        type_hints = _get_type_hints(config_class)
         kwargs: dict[str, Any] = {}
         for k, v in data.items():
             if k not in type_hints:
                 raise AttributeError(f"class '{config_class.__qualname__}' has no attribute '{k}'")
-            kwargs[k] = _coerce(v, type_hints[k], self.custom_handlers, k)
+            kwargs[k] = _coerce(v, type_hints[k], self.custom_handlers, k, config_class)
 
         return config_class(**kwargs)
 
@@ -43,15 +55,32 @@ class Decoder:
 decode = Decoder()
 
 
-def _get_types(type_hint: Any) -> tuple[Any, ...]:
+def _get_type_hints(obj: Any) -> dict[str, Any]:
+    return typing.get_type_hints(obj)
+
+
+def _resolve_type_hint(type_hint: Any, owner: Any) -> Any:
+    if isinstance(type_hint, str):
+        type_hint = typing_extensions.evaluate_forward_ref(  # type: ignore
+            typing.ForwardRef(type_hint), owner=owner
+        )
+    elif type_hint is Self:  # type: ignore
+        if inspect.isclass(owner):
+            type_hint = owner
+        else:
+            type_hint = type(owner)
+    return type_hint
+
+
+def _get_allowed_types(type_hint: Any) -> tuple[Any, ...]:
     # NOTE: 'types.UnionType' doesn't cover union types with 'typing.*' types.
     if _safe_isinstance(type_hint, (types.UnionType, type(typing.List | None))):
-        return type_hint.__args__
+        return typing.get_args(type_hint)
     elif _safe_isinstance(type_hint, dataclasses.InitVar):
-        return _get_types(type_hint.type)
+        return _get_allowed_types(type_hint.type)
     # TypeAliasType added in 3.12
     elif hasattr(typing, "TypeAliasType") and _safe_isinstance(type_hint, typing.TypeAliasType):  # type: ignore
-        return _get_types(type_hint.__value__)
+        return _get_allowed_types(type_hint.__value__)
     else:
         return (type_hint,)
 
@@ -71,15 +100,21 @@ def _safe_issubclass(a, b) -> bool:
 
 
 def _coerce(
-    value: Any, type_hint: Any, custom_handlers: dict[Any, Callable[[Any], Any]], key: str
+    value: Any,
+    type_hint: Any,
+    custom_handlers: dict[Any, Callable[[Any], Any]],
+    key: str,
+    owner: Any,
 ) -> Any:
     if value is MISSING:
         raise ValueError(f"Missing required field at '{key}'")
 
+    type_hint = _resolve_type_hint(type_hint, owner)
+
     if type_hint in custom_handlers:
         return custom_handlers[type_hint](value)
 
-    allowed_types = _get_types(type_hint)
+    allowed_types = tuple(_resolve_type_hint(t, owner) for t in _get_allowed_types(type_hint))
     for allowed_type in allowed_types:
         if allowed_type in custom_handlers:
             return custom_handlers[allowed_type](value)
@@ -126,14 +161,15 @@ def _coerce(
                 except ValueError:
                     pass
 
-        origin = getattr(allowed_type, "__origin__", None)
-        args = getattr(allowed_type, "__args__", None)
+        origin = typing.get_origin(allowed_type)
+        args = typing.get_args(allowed_type)
         if (origin is list or origin is collections.abc.MutableSequence) and _safe_isinstance(
             value, (list, tuple)
         ):
             if args:
                 return [
-                    _coerce(v, args[0], custom_handlers, f"{key}.{i}") for i, v in enumerate(value)
+                    _coerce(v, args[0], custom_handlers, f"{key}.{i}", owner)
+                    for i, v in enumerate(value)
                 ]
             else:
                 return list(value)
@@ -142,7 +178,8 @@ def _coerce(
         ) and _safe_isinstance(value, (list, tuple, set)):
             if args:
                 return set(
-                    _coerce(v, args[0], custom_handlers, f"{key}.{i}") for i, v in enumerate(value)
+                    _coerce(v, args[0], custom_handlers, f"{key}.{i}", owner)
+                    for i, v in enumerate(value)
                 )
             else:
                 return set(value)
@@ -150,7 +187,7 @@ def _coerce(
             if args:
                 return tuple(
                     [
-                        _coerce(v, args[0], custom_handlers, f"{key}.{i}")
+                        _coerce(v, args[0], custom_handlers, f"{key}.{i}", owner)
                         for i, v in enumerate(value)
                     ]
                 )
@@ -160,14 +197,14 @@ def _coerce(
             if args and ... in args:
                 return tuple(
                     [
-                        _coerce(v, args[0], custom_handlers, f"{key}.{i}")
+                        _coerce(v, args[0], custom_handlers, f"{key}.{i}", owner)
                         for i, v in enumerate(value)
                     ]
                 )
             elif args:
                 return tuple(
                     [
-                        _coerce(v, arg, custom_handlers, f"{key}.{i}")
+                        _coerce(v, arg, custom_handlers, f"{key}.{i}", owner)
                         for i, (v, arg) in enumerate(zip(value, args))
                     ]
                 )
@@ -180,8 +217,8 @@ def _coerce(
         ) and _safe_isinstance(value, dict):
             if args:
                 return {
-                    _coerce(k, args[0], custom_handlers, f"{key}.{k}"): _coerce(
-                        v, args[1], custom_handlers, f"{key}.{k}"
+                    _coerce(k, args[0], custom_handlers, f"{key}.{k}", owner): _coerce(
+                        v, args[1], custom_handlers, f"{key}.{k}", owner
                     )
                     for k, v in value.items()
                 }
@@ -200,7 +237,7 @@ def _coerce(
                     allowed_type = allowed_type.get_registered_class(type_name)
 
             try:
-                type_hints = typing.get_type_hints(allowed_type)
+                type_hints = _get_type_hints(allowed_type)
             except NameError as e:
                 raise NameError(
                     f"{str(e)}. If you're using 'from __future__ import annotations' you may need to import this type."
@@ -214,7 +251,7 @@ def _coerce(
                     raise KeyError(
                         f"type {allowed_type} has no field '{k}' (full key '{key}.{k}')"
                     ) from e
-                kwargs[k] = _coerce(v, type_hint, custom_handlers, f"{key}.{k}")
+                kwargs[k] = _coerce(v, type_hint, custom_handlers, f"{key}.{k}", owner)
             return allowed_type(**kwargs)
 
     if Any in allowed_types:
@@ -222,5 +259,5 @@ def _coerce(
 
     raise TypeError(
         f"Not sure how to coerce value {value} at key '{key}' to any "
-        f"of {allowed_types} from type hint '{type_hint}'"
+        f"of {allowed_types} from type hint '{type_hint}' ({type(type_hint)})"
     )
