@@ -101,6 +101,7 @@ CLI:
 
 ```python
 import sys
+import dataclasses
 from dataclasses import dataclass
 from dataclass_extensions import merge_from_dotlist
 
@@ -112,17 +113,12 @@ class Optimizer:
 
 @dataclass
 class Config:
-    optimizer: Optimizer = None  # type: ignore
+    optimizer: Optimizer = dataclasses.field(default_factory=Optimizer)
     name: str = "default"
     seed: int = 42
 
-    def __post_init__(self):
-        if self.optimizer is None:
-            self.optimizer = Optimizer()
-
 # Both "field=value" and "--field=value" forms are accepted, so this works
-# whether argv looks like ["optimizer.lr=1e-4", "name=run1"] or
-# ["--optimizer.lr=1e-4", "--name=run1"].
+# whether argv looks like ["optimizer.lr=1e-4", "name=run1"] or ["--optimizer.lr=1e-4", "--name=run1"].
 config = merge_from_dotlist(Config(), sys.argv[1:])
 
 # Values are parsed as YAML, so types are handled automatically:
