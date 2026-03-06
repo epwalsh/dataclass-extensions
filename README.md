@@ -58,6 +58,40 @@ assert encode(bar) == {"foo": {"x": 10}}
 assert decode(Bar, encode(bar)) == bar
 ```
 
+### Merge dictionaries into a dataclass
+
+```python
+from dataclasses import dataclass
+from dataclass_extensions import merge
+
+
+@dataclass
+class Optimizer:
+    lr: float
+    steps: int
+
+@dataclass
+class Config:
+    optimizer: Optimizer
+    name: str = "default"
+
+config = Config(optimizer=Optimizer(lr=0.1, steps=100), name="run1")
+
+# Override top-level fields
+updated = merge(config, {"name": "run2"})
+assert updated.name == "run2"
+assert updated.optimizer.lr == 0.1  # unchanged
+
+# Merge recursively into nested dataclasses
+updated = merge(config, {"optimizer": {"lr": 0.001}})
+assert updated.optimizer.lr == 0.001
+assert updated.optimizer.steps == 100  # unchanged
+assert updated.name == "run1"          # unchanged
+
+# The original is never modified
+assert config.optimizer.lr == 0.1
+```
+
 ### Polymorphism through registrable subclasses
 
 ```python
