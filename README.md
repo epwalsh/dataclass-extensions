@@ -120,7 +120,9 @@ class Config:
         if self.optimizer is None:
             self.optimizer = Optimizer()
 
-# Imagine sys.argv[1:] == ["optimizer.lr=1e-4", "optimizer.steps=500", "name=run1"]
+# Both "field=value" and "--field=value" forms are accepted, so this works
+# whether argv looks like ["optimizer.lr=1e-4", "name=run1"] or
+# ["--optimizer.lr=1e-4", "--name=run1"].
 config = merge_from_dotlist(Config(), *sys.argv[1:])
 
 # Values are parsed as YAML, so types are handled automatically:

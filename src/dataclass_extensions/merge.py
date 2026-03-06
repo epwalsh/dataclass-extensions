@@ -74,6 +74,12 @@ def merge_from_dotlist(instance: C, *overrides: str) -> C:
     """
     nested: dict[str, Any] = {}
     for override in overrides:
+        if override.startswith("--"):
+            override = override[2:]
+        if override.startswith("-"):
+            raise ValueError(
+                f"Invalid override {override!r}: expected the form 'field=value' or '--field=value'"
+            )
         if "=" not in override:
             raise ValueError(f"Invalid override {override!r}: expected the form 'field=value'")
         key, _, raw_value = override.partition("=")

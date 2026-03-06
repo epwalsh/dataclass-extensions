@@ -301,6 +301,25 @@ def test_dotlist_conflicting_leaf_and_nested_raises():
         merge_from_dotlist(cfg, "optimizer=something", "optimizer.lr=0.001")
 
 
+def test_dotlist_double_dash_prefix():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    result = merge_from_dotlist(cfg, "--optimizer.lr=0.001", "--name=run2")
+    assert result.optimizer.lr == 0.001
+    assert result.name == "run2"
+
+
+def test_dotlist_single_dash_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(ValueError, match="expected the form"):
+        merge_from_dotlist(cfg, "-optimizer.lr=0.001")
+
+
+def test_dotlist_triple_dash_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(ValueError, match="expected the form"):
+        merge_from_dotlist(cfg, "---optimizer.lr=0.001")
+
+
 def test_dotlist_value_containing_equals():
     @dataclass
     class Cfg:
