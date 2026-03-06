@@ -123,7 +123,7 @@ class Config:
 # Both "field=value" and "--field=value" forms are accepted, so this works
 # whether argv looks like ["optimizer.lr=1e-4", "name=run1"] or
 # ["--optimizer.lr=1e-4", "--name=run1"].
-config = merge_from_dotlist(Config(), *sys.argv[1:])
+config = merge_from_dotlist(Config(), sys.argv[1:])
 
 # Values are parsed as YAML, so types are handled automatically:
 assert config.optimizer.lr  == 0.0001  (float)

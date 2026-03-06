@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import typing
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast, overload
 
 import yaml
 
@@ -94,7 +94,17 @@ def _merge_sequence_by_index(
     return type(existing)(items)
 
 
+@overload
+def merge_from_dotlist(instance: C, overrides: list[str], /) -> C:
+    ...
+
+
+@overload
 def merge_from_dotlist(instance: C, *overrides: str) -> C:
+    ...
+
+
+def merge_from_dotlist(instance: C, *overrides: str | list[str]) -> C:
     """
     Merge field overrides expressed as dot-notation strings into a dataclass,
     returning a new instance of the same type. The original instance is not modified.
@@ -106,16 +116,21 @@ def merge_from_dotlist(instance: C, *overrides: str) -> C:
     ``"optimizer.lr=0.001"`` and ``"optimizer.steps=500"`` both update the same
     nested ``optimizer`` field.
 
-    Example::
+    Can be called with variadic string arguments or a single list of strings::
 
         result = merge_from_dotlist(config, "optimizer.lr=0.001", "name=run2")
+        result = merge_from_dotlist(config, ["optimizer.lr=0.001", "name=run2"])
 
     :raises ValueError: If an override string does not contain ``=``.
     :raises DecodeError: If a key is not a valid field name, or if a value cannot
         be coerced to the expected type.
     """
+    if len(overrides) == 1 and isinstance(overrides[0], list):
+        resolved: tuple[str, ...] = tuple(overrides[0])
+    else:
+        resolved = cast(tuple[str, ...], overrides)
     nested: dict[str, Any] = {}
-    for override in overrides:
+    for override in resolved:
         if override.startswith("--"):
             override = override[2:]
         if override.startswith("-"):
