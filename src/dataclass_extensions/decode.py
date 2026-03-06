@@ -39,14 +39,18 @@ class Decoder:
 
         :raises DecodeError: If decoding fails.
         """
+        ignore_keys = set()
         if _safe_issubclass(config_class, Registrable):
-            type_name = data.pop("type", config_class._default_type)  # type: ignore[attr-defined]
+            type_name = data.get("type", config_class._default_type)  # type: ignore[attr-defined]
+            ignore_keys.add("type")
             if type_name is not None and type_name != config_class.registered_name:  # type: ignore[attr-defined]
                 config_class = config_class.get_registered_class(type_name)  # type: ignore[attr-defined]
 
         type_hints = _get_type_hints(config_class)
         kwargs: dict[str, Any] = {}
         for k, v in data.items():
+            if k in ignore_keys:
+                continue
             if k not in type_hints:
                 raise DecodeError(f"class '{config_class.__qualname__}' has no attribute '{k}'")
             kwargs[k] = _coerce(v, type_hints[k], self.custom_handlers, k, config_class)
@@ -269,12 +273,12 @@ def _coerce(
     if len(allowed_types) > 1:
         error_message = (
             f"Failed to coerce value {value} at key '{key}' to any "
-            f"of {', '.join([str(t) for t in allowed_types])} from type hint '{type_hint}' ({type(type_hint)})."
+            f"of {', '.join([str(t) for t in allowed_types])} from type hint '{type_hint}' ({type(type_hint).__name__})."
         )
     else:
         error_message = (
             f"Failed to coerce value {value} at key '{key}' to a "
-            f"{allowed_types[0]} from type hint '{type_hint}' ({type(type_hint)})."
+            f"{allowed_types[0]} from type hint '{type_hint}' ({type(type_hint).__name__})."
         )
 
     for failure in failures:

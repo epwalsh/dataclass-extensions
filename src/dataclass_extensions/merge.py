@@ -109,7 +109,9 @@ def _set_nested(data: Any, key: str, value: Any):
         elif isinstance(data, list):
             _set_nested(data[int(key)], child_keys, value)
         else:
-            raise DecodeError(data)
+            raise DecodeError(
+                f"Cannot traverse into '{key}' (type {type(data).__name__}) to set '{child_keys}'"
+            )
     else:
         if isinstance(data, dict):
             data[key] = value
@@ -125,5 +127,5 @@ def _set_nested(data: Any, key: str, value: Any):
             data[idx] = value
         else:
             raise DecodeError(
-                f"Can't set value '{value}' at key '{key}' for object {data} of type {type(data)}"
+                f"Can't set value '{value}' at key '{key}' for object of type {type(data).__name__}"
             )

@@ -41,7 +41,7 @@ class Encoder:
             If ``"ignore"`` the value is returned as-is.
             If ``"stringify"`` the value is converted to a string.
         :param strict: Deprecated. Use ``errors`` instead.
-            ``True`` is equivalent to ``errors="raise"`` and ``False`` is equivalent to ``errors="ignore"``.
+            ``True`` is equivalent to ``errors="raise"`` and ``False`` is equivalent to ``errors="stringify"``.
         """
 
         if strict is not None:
@@ -100,7 +100,7 @@ class Encoder:
                     continue
 
             if errors == "raise":
-                raise TypeError(f"not sure how to encode '{d}' of type {type(d)}")
+                raise TypeError(f"not sure how to encode '{d}' of type {type(d).__name__}")
             elif errors == "stringify":
                 return str(d)
             elif errors == "ignore":

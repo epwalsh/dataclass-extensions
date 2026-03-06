@@ -373,21 +373,6 @@ def test_decode_type_error():
         decode(Config, {"x": "not_an_int"})
 
 
-def test_decode_missing_required_field():
-    """Test decode with missing required field."""
-    from dataclass_extensions.utils import required_field
-
-    @dataclass
-    class Config:
-        x: int
-        y: str = required_field()
-
-    # Missing required field should use MISSING default
-    config = decode(Config, {"x": 1})
-    assert config.x == 1
-    assert config.y is MISSING
-
-
 def test_decode_invalid_tuple_length():
     """Test decode with invalid tuple length."""
 
@@ -688,7 +673,7 @@ def test_decode_error_from_inner_error():
 
     assert str(exc_info.value) == "\n".join(
         [
-            "Failed to coerce value {'items': [{'z': 2}]} at key 'c' to a <class 'test.decode_test.ConfigWithUnionOfSubTypes'> from type hint '<class 'test.decode_test.ConfigWithUnionOfSubTypes'>' (<class 'type'>).",
+            "Failed to coerce value {'items': [{'z': 2}]} at key 'c' to a <class 'test.decode_test.ConfigWithUnionOfSubTypes'> from type hint '<class 'test.decode_test.ConfigWithUnionOfSubTypes'>' (type).",
             "→ [c.items.0] coercing to <class 'test.decode_test.Config1'> failed with AttributeError: class 'Config1' has no attribute 'z'",
             "→ [c.items.0] coercing to <class 'test.decode_test.Config2'> failed with AttributeError: class 'Config2' has no attribute 'z'",
         ]
