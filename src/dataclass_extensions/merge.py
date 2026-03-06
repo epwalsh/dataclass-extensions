@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import dataclasses
-import typing
 from typing import Any, TypeVar, cast, overload
 
 import yaml
 
-from .decode import DecodeError, _coerce, _get_type_hints
+from .decode import DecodeError, decode
+from .encode import encode
 from .types import Dataclass
 
 C = TypeVar("C", bound=Dataclass)
@@ -18,80 +17,22 @@ def merge(instance: C, *dicts: dict[str, Any]) -> C:
     instance of the same type. The original instance is not modified.
 
     When a dictionary value is itself a dict and the corresponding field on the
-    instance is already a dataclass, the merge is applied recursively. When the
-    value is a dict with integer keys and the existing field is a sequence, the
-    updates are applied by index.
+    instance is already a dataclass, the merge is applied recursively.
 
     :raises DecodeError: If a key in a dictionary is not a valid field name, or if
         a value cannot be coerced to the expected type.
     """
     cls = type(instance)
-    type_hints = _get_type_hints(cls)
 
-    # Collect current values for all init fields.
-    current: dict[str, Any] = {}
-    for f in dataclasses.fields(instance):  # type: ignore[arg-type]
-        if f.init:
-            current[f.name] = getattr(instance, f.name)
+    # Encode current instance.
+    current = encode(instance, errors="ignore")
 
+    # Apply updates from each dict to the raw/encoded values.
     for d in dicts:
-        for key, value in d.items():
-            if key not in type_hints:
-                raise DecodeError(f"class '{cls.__qualname__}' has no attribute '{key}'")
+        current = _merge_dicts(current, d)
 
-            existing = current[key]
-
-            # Recursively merge when the incoming value is a dict and the existing
-            # value is a dataclass instance (not a dataclass class/type).
-            if (
-                isinstance(value, dict)
-                and dataclasses.is_dataclass(existing)
-                and not isinstance(existing, type)
-            ):
-                current[key] = merge(existing, value)
-            elif (
-                isinstance(value, dict)
-                and isinstance(existing, (list, tuple))
-                and value
-                and all(isinstance(k, int) for k in value)
-            ):
-                current[key] = _merge_sequence_by_index(existing, value, type_hints[key], key, cls)
-            else:
-                current[key] = _coerce(value, type_hints[key], {}, key, cls)
-
-    return cls(**current)
-
-
-def _merge_sequence_by_index(
-    existing: list | tuple,
-    updates: dict[int, Any],
-    type_hint: Any,
-    key: str,
-    owner: Any,
-) -> list | tuple:
-    """Apply index-keyed updates to a list or tuple, returning the same container type."""
-    items = list(existing)
-    origin = typing.get_origin(type_hint)
-    args = typing.get_args(type_hint)
-
-    for idx, val in updates.items():
-        if args:
-            if origin is tuple:
-                # tuple[T, ...] — all elements share args[0]
-                if len(args) == 2 and args[1] is ...:
-                    elem_type = args[0]
-                elif idx < len(args):
-                    elem_type = args[idx]
-                else:
-                    elem_type = Any
-            else:
-                # list[T], Sequence[T], etc. — single element type
-                elem_type = args[0]
-        else:
-            elem_type = Any
-        items[idx] = _coerce(val, elem_type, {}, f"{key}.{idx}", owner)
-
-    return type(existing)(items)
+    # Then decode back to the correct types, applying any custom handlers and validating field names.
+    return decode(cls, current)
 
 
 @overload
@@ -129,7 +70,11 @@ def merge_from_dotlist(instance: C, *overrides: str | list[str]) -> C:
         resolved: tuple[str, ...] = tuple(overrides[0])
     else:
         resolved = cast(tuple[str, ...], overrides)
-    nested: dict[str, Any] = {}
+
+    # Encode current instance.
+    current = encode(instance, errors="ignore")
+
+    # Override raw encoded values.
     for override in resolved:
         if override.startswith("--"):
             override = override[2:]
@@ -141,26 +86,44 @@ def merge_from_dotlist(instance: C, *overrides: str | list[str]) -> C:
             raise ValueError(f"Invalid override {override!r}: expected the form 'field=value'")
         key, _, raw_value = override.partition("=")
         value = yaml.safe_load(raw_value)
-        _set_nested(nested, key.split("."), value)
-    return merge(instance, nested)
+        _set_nested(current, key, value)
+
+    # Decode back to the correct types, applying any custom handlers and validating field names.
+    return decode(type(instance), current)
 
 
-def _set_nested(d: dict, parts: list[str], value: Any) -> None:
-    """Write *value* into *d* at the path described by *parts*, creating
-    intermediate dicts as needed. Digit-only parts are stored as integer keys
-    so that merge() can apply them as sequence indices."""
-    for part in parts[:-1]:
-        key: str | int = int(part) if part.isdigit() else part
-        existing = d.get(key)
-        if existing is None:
-            d[key] = {}
-            d = d[key]
-        elif isinstance(existing, dict):
-            d = existing
+def _merge_dicts(base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
+    for key, value in updates.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            base[key] = _merge_dicts(base[key], value)
         else:
-            raise ValueError(
-                f"Conflicting overrides: '{part}' is set both as a leaf value "
-                "and as a nested key"
+            base[key] = value
+    return base
+
+
+def _set_nested(data: Any, key: str, value: Any):
+    if "." in key:
+        key, child_keys = key.split(".", 1)
+        if isinstance(data, dict):
+            _set_nested(data[key], child_keys, value)
+        elif isinstance(data, list):
+            _set_nested(data[int(key)], child_keys, value)
+        else:
+            raise DecodeError(data)
+    else:
+        if isinstance(data, dict):
+            data[key] = value
+        elif isinstance(data, list):
+            try:
+                idx = int(key)
+            except ValueError:
+                raise DecodeError(f"Expected integer index for list but got '{key}'")
+            if idx < 0:
+                idx += len(data)
+            if idx < 0 or idx >= len(data):
+                raise DecodeError(f"Index {idx} is out of bounds for list of length {len(data)}")
+            data[idx] = value
+        else:
+            raise DecodeError(
+                f"Can't set value '{value}' at key '{key}' for object {data} of type {type(data)}"
             )
-    last = parts[-1]
-    d[int(last) if last.isdigit() else last] = value

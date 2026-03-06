@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
-from dataclass_extensions.decode import DecodeError
+from dataclass_extensions import Registrable
+from dataclass_extensions.decode import DecodeError, Decoder, decode
 from dataclass_extensions.merge import merge, merge_from_dotlist
 
 
@@ -309,10 +310,11 @@ def test_dotlist_type_coercion_error_raises():
         merge_from_dotlist(cfg, "optimizer.steps=not_a_number")
 
 
-def test_dotlist_conflicting_leaf_and_nested_raises():
+def test_dotlist_leaf_and_nested():
     cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
-    with pytest.raises(ValueError, match="Conflicting overrides"):
-        merge_from_dotlist(cfg, "optimizer=something", "optimizer.lr=0.001")
+    cfg = merge_from_dotlist(cfg, "optimizer={lr: 0.2, steps: 50}", "optimizer.lr=0.001")
+    assert cfg.optimizer.lr == 0.001
+    assert cfg.optimizer.steps == 50
 
 
 def test_dotlist_double_dash_prefix():
@@ -386,12 +388,110 @@ def test_dotlist_sequence_index_does_not_modify_original():
     assert original.x == (0, 1)
 
 
-def test_merge_sequence_by_index_directly():
+# ---------------------------------------------------------------------------
+# Bug: init=False fields crash with KeyError instead of DecodeError
+# ---------------------------------------------------------------------------
+
+
+def test_merge_init_false_field_raises():
     @dataclass
     class Cfg:
-        items: list[float]
+        x: int
+        _derived: int = field(init=False)
 
-    result = merge(Cfg(items=[1.0, 2.0, 3.0]), {"items": {1: 9.9}})
-    assert result.items[1] == 9.9
-    assert result.items[0] == 1.0
-    assert result.items[2] == 3.0
+        def __post_init__(self):
+            self._derived = self.x * 2
+
+    with pytest.raises(DecodeError, match="_derived"):
+        merge(Cfg(x=1), {"_derived": 99})
+
+
+# ---------------------------------------------------------------------------
+# Bug: merge ignores custom decoders registered on decode
+# ---------------------------------------------------------------------------
+
+
+class _Wrapped:
+    def __init__(self, v: int):
+        self.v = v
+
+
+@dataclass
+class _WrappedCfg:
+    value: _Wrapped
+
+
+def test_merge_respects_custom_decoders():
+    decode.register_decoder(lambda v: _Wrapped(v * 10), _Wrapped)
+    try:
+        result = merge(_WrappedCfg(value=_Wrapped(1)), {"value": 7})
+        assert result.value.v == 70
+    finally:
+        del Decoder.custom_handlers[_Wrapped]
+
+
+# ---------------------------------------------------------------------------
+# Bug: out-of-bounds sequence index raises IndexError not DecodeError
+# ---------------------------------------------------------------------------
+
+
+def test_dotlist_sequence_index_out_of_bounds_raises():
+    @dataclass
+    class Cfg:
+        items: list[int]
+
+    with pytest.raises(DecodeError, match="out of bounds"):
+        merge_from_dotlist(Cfg(items=[1, 2, 3]), "items.5=99")
+
+
+# ---------------------------------------------------------------------------
+# merge with direct registrable
+# ---------------------------------------------------------------------------
+
+
+def test_merge_registrable_type_field_raises():
+    @dataclass
+    class MyBase(Registrable):
+        value: int
+
+    @MyBase.register("impl")
+    @dataclass
+    class MyImpl(MyBase):
+        value: int
+
+    instance = MyImpl(value=1)
+    instance = merge(instance, {"type": "impl"})
+    assert isinstance(instance, MyImpl)
+
+
+# ---------------------------------------------------------------------------
+# merge with registrable sub-fields
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MyBase(Registrable):
+    x: int
+
+
+@MyBase.register("A")
+@dataclass
+class A(MyBase):
+    x: int
+
+
+@MyBase.register("B")
+@dataclass
+class B(MyBase):
+    x: int
+    y: int = 0
+
+
+def test_merge_registrable():
+    @dataclass
+    class Config:
+        model: MyBase
+
+    c = Config(model=A(x=1))
+    c = merge(c, {"model": {"type": "B", "x": 10, "y": 20}})
+    assert isinstance(c.model, B)

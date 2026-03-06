@@ -51,7 +51,10 @@ class Decoder:
                 raise DecodeError(f"class '{config_class.__qualname__}' has no attribute '{k}'")
             kwargs[k] = _coerce(v, type_hints[k], self.custom_handlers, k, config_class)
 
-        return config_class(**kwargs)
+        try:
+            return config_class(**kwargs)
+        except TypeError as exc:
+            raise DecodeError(f"Failed to decode {config_class.__qualname__}, {exc}.") from exc
 
 
 decode = Decoder()

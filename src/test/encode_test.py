@@ -159,13 +159,17 @@ def test_encode_strict():
 
     config = Config(x=1, custom=CustomClass("test"))
 
-    # With strict=True (default), should raise TypeError
+    # With errors="raise" (default), should raise TypeError
     with pytest.raises(TypeError, match="not sure how to encode"):
-        encode(config, strict=True)
+        encode(config, errors="raise")
 
-    # With strict=False, should use str() as fallback
-    encoded = encode(config, strict=False)
+    # With errors="stringify", should use str() as fallback
+    encoded = encode(config, errors="stringify")
     assert encoded == {"x": 1, "custom": "Custom(test)"}
+
+    # With errors="ignore", should include type as-is.
+    encoded = encode(config, errors="ignore")
+    assert encoded == {"x": 1, "custom": config.custom}
 
 
 def test_encode_custom_handler():

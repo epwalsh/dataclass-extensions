@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
+import warnings
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, ClassVar, Generator, Type, TypeVar
+from typing import Any, Callable, ClassVar, Generator, Literal, Type, TypeVar
 
 from .registrable import Registrable
 from .types import *
@@ -26,7 +27,8 @@ class Encoder:
         exclude_none: bool = False,
         exclude_private_fields: bool = False,
         recurse: bool = True,
-        strict: bool = True,
+        errors: Literal["raise", "ignore", "stringify"] = "raise",
+        strict: bool | None = None,
     ) -> Any:
         """
         Encode a Python object into JSON-safe dictionary. The inverse of :func:`decode()`.
@@ -34,9 +36,21 @@ class Encoder:
         :param exclude_none: Don't include values that are ``None``.
         :param exclude_private_fields: Don't include private fields.
         :param recurse: Recurse into fields that are also configs/dataclasses.
-        :param strict: If ``True`` a ``TypeError`` is raised when a type is encountered that doesn't
-            have a safe encoding method. Otherwise ``str(value)`` is used.
+        :param errors: How to handle values that don't have a safe encoding method.
+            If ``"raise"`` a ``TypeError`` is raised.
+            If ``"ignore"`` the value is returned as-is.
+            If ``"stringify"`` the value is converted to a string.
+        :param strict: Deprecated. Use ``errors`` instead.
+            ``True`` is equivalent to ``errors="raise"`` and ``False`` is equivalent to ``errors="ignore"``.
         """
+
+        if strict is not None:
+            warnings.warn(
+                "Passing 'strict' is deprecated. Use 'errors' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            errors = "raise" if strict else "stringify"
 
         def iter_fields(d) -> Generator[tuple[str, Any], None, None]:
             for field in dataclasses.fields(d):
@@ -85,10 +99,14 @@ class Encoder:
                 except TypeError:
                     continue
 
-            if strict:
+            if errors == "raise":
                 raise TypeError(f"not sure how to encode '{d}' of type {type(d)}")
-            else:
+            elif errors == "stringify":
                 return str(d)
+            elif errors == "ignore":
+                return d
+            else:
+                raise ValueError(f"Invalid value for 'errors': {errors!r}")
 
         return as_dict(data, recurse=recurse)
 

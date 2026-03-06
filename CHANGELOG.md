@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `errors` argument to `encode()`.
+
+### Changed
+
+- `strict` argument to `encode()` is now deprecated. Prefer `errors` instead.
+
 ## [v0.4.0](https://github.com/epwalsh/dataclass-extensions/releases/tag/v0.4.0) - 2026-03-05
 
 ### Added
