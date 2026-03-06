@@ -126,9 +126,9 @@ class Config:
 config = merge_from_dotlist(Config(), *sys.argv[1:])
 
 # Values are parsed as YAML, so types are handled automatically:
-# config.optimizer.lr  == 0.0001  (float)
-# config.optimizer.steps == 500   (int)
-# config.name == "run1"           (str)
+assert config.optimizer.lr  == 0.0001  (float)
+assert config.optimizer.steps == 500   (int)
+assert config.name == "run1"           (str)
 ```
 
 Supported value syntax includes plain scalars (`0.001`, `100`, `true`, `null`), quoted strings (`"hello world"`), lists (`[1, 2, 3]`), and inline mappings (`{a: 1}`).
