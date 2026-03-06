@@ -58,6 +58,82 @@ assert encode(bar) == {"foo": {"x": 10}}
 assert decode(Bar, encode(bar)) == bar
 ```
 
+### Merge dictionaries into a dataclass
+
+```python
+from dataclasses import dataclass
+from dataclass_extensions import merge
+
+
+@dataclass
+class Optimizer:
+    lr: float
+    steps: int
+
+@dataclass
+class Config:
+    optimizer: Optimizer
+    name: str = "default"
+
+config = Config(optimizer=Optimizer(lr=0.1, steps=100), name="run1")
+
+# Override top-level fields
+updated = merge(config, {"name": "run2"})
+assert updated.name == "run2"
+assert updated.optimizer.lr == 0.1  # unchanged
+
+# Merge recursively into nested dataclasses
+updated = merge(config, {"optimizer": {"lr": 0.001}})
+assert updated.optimizer.lr == 0.001
+assert updated.optimizer.steps == 100  # unchanged
+assert updated.name == "run1"          # unchanged
+
+# The original is never modified
+assert config.optimizer.lr == 0.1
+```
+
+### Override dataclass fields from the command line
+
+`merge_from_dotlist()` works like `merge()` but accepts strings of the form
+`"field=value"`, where the value is parsed as YAML. Nested fields are targeted
+with dot notation. This gives you a cheap way to expose a dataclass config to a
+CLI:
+
+```python
+import sys
+from dataclasses import dataclass
+from dataclass_extensions import merge_from_dotlist
+
+
+@dataclass
+class Optimizer:
+    lr: float = 1e-3
+    steps: int = 1000
+
+@dataclass
+class Config:
+    optimizer: Optimizer = None  # type: ignore
+    name: str = "default"
+    seed: int = 42
+
+    def __post_init__(self):
+        if self.optimizer is None:
+            self.optimizer = Optimizer()
+
+# Both "field=value" and "--field=value" forms are accepted, so this works
+# whether argv looks like ["optimizer.lr=1e-4", "name=run1"] or
+# ["--optimizer.lr=1e-4", "--name=run1"].
+config = merge_from_dotlist(Config(), *sys.argv[1:])
+
+# Values are parsed as YAML, so types are handled automatically:
+assert config.optimizer.lr  == 0.0001  (float)
+assert config.optimizer.steps == 500   (int)
+assert config.name == "run1"           (str)
+```
+
+Supported value syntax includes plain scalars (`0.001`, `100`, `true`, `null`), quoted strings (`"hello world"`), lists (`[1, 2, 3]`), and inline mappings (`{a: 1}`).
+Values containing `=` work correctly because the split happens on the first `=` only.
+
 ### Polymorphism through registrable subclasses
 
 ```python
