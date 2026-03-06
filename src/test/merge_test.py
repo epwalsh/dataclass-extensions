@@ -328,3 +328,56 @@ def test_dotlist_value_containing_equals():
     # The value part should include everything after the first '='
     result = merge_from_dotlist(Cfg(expr=""), "expr=a=b")
     assert result.expr == "a=b"
+
+
+# ---------------------------------------------------------------------------
+# sequence index targeting tests
+# ---------------------------------------------------------------------------
+
+
+def test_dotlist_sequence_index_tuple():
+    @dataclass
+    class Cfg:
+        x: tuple[int, int]
+
+    result = merge_from_dotlist(Cfg(x=(0, 1)), "--x.0=-1")
+    assert result.x == (-1, 1)
+
+
+def test_dotlist_sequence_index_list():
+    @dataclass
+    class Cfg:
+        items: list[int]
+
+    result = merge_from_dotlist(Cfg(items=[10, 20, 30]), "items.1=99")
+    assert result.items == [10, 99, 30]
+
+
+def test_dotlist_sequence_index_multiple():
+    @dataclass
+    class Cfg:
+        x: tuple[int, int, int]
+
+    result = merge_from_dotlist(Cfg(x=(0, 1, 2)), "x.0=7", "x.2=9")
+    assert result.x == (7, 1, 9)
+
+
+def test_dotlist_sequence_index_does_not_modify_original():
+    @dataclass
+    class Cfg:
+        x: tuple[int, int]
+
+    original = Cfg(x=(0, 1))
+    merge_from_dotlist(original, "x.0=99")
+    assert original.x == (0, 1)
+
+
+def test_merge_sequence_by_index_directly():
+    @dataclass
+    class Cfg:
+        items: list[float]
+
+    result = merge(Cfg(items=[1.0, 2.0, 3.0]), {"items": {1: 9.9}})
+    assert result.items[1] == 9.9
+    assert result.items[0] == 1.0
+    assert result.items[2] == 3.0

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import typing
 from typing import Any, TypeVar
 
 import yaml
@@ -17,7 +18,9 @@ def merge(instance: C, *dicts: dict[str, Any]) -> C:
     instance of the same type. The original instance is not modified.
 
     When a dictionary value is itself a dict and the corresponding field on the
-    instance is already a dataclass, the merge is applied recursively.
+    instance is already a dataclass, the merge is applied recursively. When the
+    value is a dict with integer keys and the existing field is a sequence, the
+    updates are applied by index.
 
     :raises DecodeError: If a key in a dictionary is not a valid field name, or if
         a value cannot be coerced to the expected type.
@@ -46,10 +49,49 @@ def merge(instance: C, *dicts: dict[str, Any]) -> C:
                 and not isinstance(existing, type)
             ):
                 current[key] = merge(existing, value)
+            elif (
+                isinstance(value, dict)
+                and isinstance(existing, (list, tuple))
+                and value
+                and all(isinstance(k, int) for k in value)
+            ):
+                current[key] = _merge_sequence_by_index(existing, value, type_hints[key], key, cls)
             else:
                 current[key] = _coerce(value, type_hints[key], {}, key, cls)
 
     return cls(**current)
+
+
+def _merge_sequence_by_index(
+    existing: list | tuple,
+    updates: dict[int, Any],
+    type_hint: Any,
+    key: str,
+    owner: Any,
+) -> list | tuple:
+    """Apply index-keyed updates to a list or tuple, returning the same container type."""
+    items = list(existing)
+    origin = typing.get_origin(type_hint)
+    args = typing.get_args(type_hint)
+
+    for idx, val in updates.items():
+        if args:
+            if origin is tuple:
+                # tuple[T, ...] — all elements share args[0]
+                if len(args) == 2 and args[1] is ...:
+                    elem_type = args[0]
+                elif idx < len(args):
+                    elem_type = args[idx]
+                else:
+                    elem_type = Any
+            else:
+                # list[T], Sequence[T], etc. — single element type
+                elem_type = args[0]
+        else:
+            elem_type = Any
+        items[idx] = _coerce(val, elem_type, {}, f"{key}.{idx}", owner)
+
+    return type(existing)(items)
 
 
 def merge_from_dotlist(instance: C, *overrides: str) -> C:
@@ -88,14 +130,16 @@ def merge_from_dotlist(instance: C, *overrides: str) -> C:
     return merge(instance, nested)
 
 
-def _set_nested(d: dict[str, Any], parts: list[str], value: Any) -> None:
+def _set_nested(d: dict, parts: list[str], value: Any) -> None:
     """Write *value* into *d* at the path described by *parts*, creating
-    intermediate dicts as needed."""
+    intermediate dicts as needed. Digit-only parts are stored as integer keys
+    so that merge() can apply them as sequence indices."""
     for part in parts[:-1]:
-        existing = d.get(part)
+        key: str | int = int(part) if part.isdigit() else part
+        existing = d.get(key)
         if existing is None:
-            d[part] = {}
-            d = d[part]
+            d[key] = {}
+            d = d[key]
         elif isinstance(existing, dict):
             d = existing
         else:
@@ -103,4 +147,5 @@ def _set_nested(d: dict[str, Any], parts: list[str], value: Any) -> None:
                 f"Conflicting overrides: '{part}' is set both as a leaf value "
                 "and as a nested key"
             )
-    d[parts[-1]] = value
+    last = parts[-1]
+    d[int(last) if last.isdigit() else last] = value

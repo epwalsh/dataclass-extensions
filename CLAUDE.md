@@ -26,6 +26,9 @@ mypy src/
 # Format
 black src/
 isort src/
+
+# Run all checks
+make check
 ```
 
 ## Architecture
