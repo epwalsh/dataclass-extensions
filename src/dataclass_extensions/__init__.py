@@ -1,6 +1,6 @@
 from .decode import DecodeError, decode
 from .encode import encode
-from .merge import merge
+from .merge import merge, merge_from_dotlist
 from .registrable import Registrable
 from .types import Dataclass
 from .utils import required_field
@@ -13,4 +13,5 @@ __all__ = [
     "encode",
     "decode",
     "merge",
+    "merge_from_dotlist",
 ]

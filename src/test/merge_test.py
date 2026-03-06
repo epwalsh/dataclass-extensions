@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from dataclass_extensions.decode import DecodeError
-from dataclass_extensions.merge import merge
+from dataclass_extensions.merge import merge, merge_from_dotlist
 
 
 @dataclass
@@ -172,3 +172,140 @@ def test_merge_list_field_replaced():
     result = merge(original, {"items": [4, 5]})
     assert result.items == [4, 5]
     assert original.items == [1, 2, 3]
+
+
+# ---------------------------------------------------------------------------
+# merge_from_dotlist tests
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Optimizer:
+    lr: float
+    steps: int
+
+
+@dataclass
+class TrainConfig:
+    optimizer: Optimizer
+    name: str = "default"
+    seed: int = 42
+
+
+def test_dotlist_basic():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    result = merge_from_dotlist(cfg, "name=run1")
+    assert result.name == "run1"
+    assert result.optimizer.lr == 0.1  # unchanged
+
+
+def test_dotlist_nested():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    result = merge_from_dotlist(cfg, "optimizer.lr=0.001")
+    assert result.optimizer.lr == 0.001
+    assert result.optimizer.steps == 100  # unchanged
+
+
+def test_dotlist_multiple_overrides():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    result = merge_from_dotlist(cfg, "optimizer.lr=0.001", "optimizer.steps=500", "name=run2")
+    assert result.optimizer.lr == 0.001
+    assert result.optimizer.steps == 500
+    assert result.name == "run2"
+
+
+def test_dotlist_yaml_types():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    # int
+    result = merge_from_dotlist(cfg, "seed=7")
+    assert result.seed == 7
+    assert type(result.seed) is int
+    # float written as scientific notation
+    result = merge_from_dotlist(cfg, "optimizer.lr=1e-4")
+    assert result.optimizer.lr == 1e-4
+
+    # bool
+    @dataclass
+    class Cfg2:
+        flag: bool
+
+    result2 = merge_from_dotlist(Cfg2(flag=False), "flag=true")
+    assert result2.flag is True
+
+
+def test_dotlist_yaml_list_value():
+    @dataclass
+    class Cfg:
+        items: list[int]
+
+    result = merge_from_dotlist(Cfg(items=[1, 2]), "items=[3, 4, 5]")
+    assert result.items == [3, 4, 5]
+
+
+def test_dotlist_yaml_null():
+    @dataclass
+    class Cfg:
+        value: int | None = 1
+
+    result = merge_from_dotlist(Cfg(), "value=null")
+    assert result.value is None
+
+
+def test_dotlist_string_with_spaces():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    result = merge_from_dotlist(cfg, "name=my experiment run")
+    assert result.name == "my experiment run"
+
+
+def test_dotlist_does_not_modify_original():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    merge_from_dotlist(cfg, "optimizer.lr=0.001", "name=run2")
+    assert cfg.optimizer.lr == 0.1
+    assert cfg.name == "default"
+
+
+def test_dotlist_no_overrides():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    result = merge_from_dotlist(cfg)
+    assert result == cfg
+    assert result is not cfg
+
+
+def test_dotlist_missing_equals_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(ValueError, match="expected the form"):
+        merge_from_dotlist(cfg, "optimizer.lr")
+
+
+def test_dotlist_unknown_field_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(DecodeError, match="has no attribute 'nonexistent'"):
+        merge_from_dotlist(cfg, "nonexistent=1")
+
+
+def test_dotlist_unknown_nested_field_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(DecodeError, match="has no attribute 'momentum'"):
+        merge_from_dotlist(cfg, "optimizer.momentum=0.9")
+
+
+def test_dotlist_type_coercion_error_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(DecodeError):
+        merge_from_dotlist(cfg, "optimizer.steps=not_a_number")
+
+
+def test_dotlist_conflicting_leaf_and_nested_raises():
+    cfg = TrainConfig(optimizer=Optimizer(lr=0.1, steps=100))
+    with pytest.raises(ValueError, match="Conflicting overrides"):
+        merge_from_dotlist(cfg, "optimizer=something", "optimizer.lr=0.001")
+
+
+def test_dotlist_value_containing_equals():
+    @dataclass
+    class Cfg:
+        expr: str
+
+    # The value part should include everything after the first '='
+    result = merge_from_dotlist(Cfg(expr=""), "expr=a=b")
+    assert result.expr == "a=b"

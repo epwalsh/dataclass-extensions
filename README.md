@@ -92,6 +92,46 @@ assert updated.name == "run1"          # unchanged
 assert config.optimizer.lr == 0.1
 ```
 
+### Override dataclass fields from the command line
+
+`merge_from_dotlist()` works like `merge()` but accepts strings of the form
+`"field=value"`, where the value is parsed as YAML. Nested fields are targeted
+with dot notation. This gives you a cheap way to expose a dataclass config to a
+CLI:
+
+```python
+import sys
+from dataclasses import dataclass
+from dataclass_extensions import merge_from_dotlist
+
+
+@dataclass
+class Optimizer:
+    lr: float = 1e-3
+    steps: int = 1000
+
+@dataclass
+class Config:
+    optimizer: Optimizer = None  # type: ignore
+    name: str = "default"
+    seed: int = 42
+
+    def __post_init__(self):
+        if self.optimizer is None:
+            self.optimizer = Optimizer()
+
+# Imagine sys.argv[1:] == ["optimizer.lr=1e-4", "optimizer.steps=500", "name=run1"]
+config = merge_from_dotlist(Config(), *sys.argv[1:])
+
+# Values are parsed as YAML, so types are handled automatically:
+# config.optimizer.lr  == 0.0001  (float)
+# config.optimizer.steps == 500   (int)
+# config.name == "run1"           (str)
+```
+
+Supported value syntax includes plain scalars (`0.001`, `100`, `true`, `null`), quoted strings (`"hello world"`), lists (`[1, 2, 3]`), and inline mappings (`{a: 1}`).
+Values containing `=` work correctly because the split happens on the first `=` only.
+
 ### Polymorphism through registrable subclasses
 
 ```python
