@@ -115,6 +115,9 @@ exclude = [
     "^src/test/_type_alias\\.py$",
 ]
 
+[tool.ty.rules]
+unused-type-ignore-comment = "ignore"
+
 [[tool.mypy.overrides]]
 module = "tests.*"
 strict_optional = false

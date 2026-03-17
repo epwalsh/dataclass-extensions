@@ -243,6 +243,7 @@ def _coerce(
                 or _safe_issubclass(allowed_type, dict)
             ) and _safe_isinstance(value, dict):
                 if _safe_issubclass(allowed_type, Registrable):
+                    allowed_type = typing.cast(Type[Registrable], allowed_type)
                     type_name = value.get("type", allowed_type._default_type)
                     if type_name is not None and type_name != allowed_type.registered_name:
                         allowed_type = allowed_type.get_registered_class(type_name)
@@ -276,6 +277,7 @@ def _coerce(
             f"of {', '.join([str(t) for t in allowed_types])} from type hint '{type_hint}' ({type(type_hint).__name__})."
         )
     else:
+        assert allowed_types
         error_message = (
             f"Failed to coerce value {value} at key '{key}' to a "
             f"{allowed_types[0]} from type hint '{type_hint}' ({type(type_hint).__name__})."
